@@ -1,0 +1,16 @@
+{
+  "description": "ResourceBuzz Lite: A Lite and Minimal Resource Monitor",
+  "name": "ResourceBuzz Lite",
+  "gettext-domain": "resourcebuzz-lite",
+  "settings-schema": "dev.hridoybuzz.resourcebuzz-lite",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49"
+  ],
+  "uuid": "ResourceBuzzLite@hridoybuzz.dev",
+  "version": 1,
+  "author": "hridoybuzz.dev"
+}

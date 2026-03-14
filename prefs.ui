@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="adw" version="1.0"/>
+  <object class="AdwPreferencesPage" id="settings_page">
+    <property name="title">Settings</property>
+    <property name="icon-name">settings-symbolic</property>
+    <child>
+      <object class="AdwPreferencesGroup">
+        <property name="title">General Settings</property>
+        <child>
+          <object class="AdwSpinRow" id="refreshtime_spin">
+            <property name="title">Refresh Time (seconds)</property>
+            <property name="adjustment">
+              <object class="GtkAdjustment">
+                <property name="lower">1</property>
+                <property name="upper">60</property>
+                <property name="step-increment">1</property>
+              </object>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwComboRow" id="position_combo">
+            <property name="title">Extension Position</property>
+            <property name="model">
+              <object class="GtkStringList">
+                <items>
+                  <item translatable="yes">Left</item>
+                  <item translatable="yes">Center</item>
+                  <item translatable="yes">Right</item>
+                </items>
+              </object>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSwitchRow" id="decimals_switch">
+            <property name="title">Show Decimals</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSwitchRow" id="icons_switch">
+            <property name="title">Show Icons</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSwitchRow" id="showcolors_switch">
+            <property name="title">Show Colors</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="AdwPreferencesGroup">
+        <property name="title">Visibility</property>
+        <child>
+          <object class="AdwSwitchRow" id="cpu_switch">
+            <property name="title">Show CPU Usage (%)</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSwitchRow" id="thermal_switch">
+            <property name="title">Show CPU Temperature</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwComboRow" id="thermal_unit_combo">
+            <property name="title">Temperature Unit</property>
+            <property name="model">
+              <object class="GtkStringList">
+                <items>
+                  <item translatable="yes">Celsius (°C)</item>
+                  <item translatable="yes">Fahrenheit (°F)</item>
+                </items>
+              </object>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSwitchRow" id="ram_switch">
+            <property name="title">Show RAM Usage (%)</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+
+  <object class="AdwPreferencesPage" id="about_page">
+    <property name="title">About</property>
+    <property name="icon-name">help-about-symbolic</property>
+    <child>
+      <object class="AdwPreferencesGroup">
+        <child>
+          <object class="AdwActionRow">
+            <property name="title">ResourceBuzz Lite</property>
+            <property name="subtitle">A Lite and Minimal Resource Monitor</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwActionRow">
+            <property name="title">Developer</property>
+            <property name="subtitle">hridoybuzz.dev</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwActionRow">
+            <property name="title">Version</property>
+            <property name="subtitle">1.0.0</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

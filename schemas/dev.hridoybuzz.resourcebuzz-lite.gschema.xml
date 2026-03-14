@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="resourcebuzz-lite">
+    <schema id="dev.hridoybuzz.resourcebuzz-lite" path="/dev/hridoybuzz/resourcebuzz-lite/">
+        <key name="refreshtime" type="i">
+            <default>2</default>
+            <summary>Refresh Time</summary>
+            <description>Time in seconds between updates.</description>
+        </key>
+        <key name="extensionposition" type="i">
+            <default>2</default>
+            <summary>Extension Position</summary>
+            <description>0: left, 1: center, 2: right</description>
+        </key>
+        <key name="decimalsstatus" type="b">
+            <default>true</default>
+            <summary>Decimals Status</summary>
+            <description>Show decimal places for values.</description>
+        </key>
+        <key name="leftclickstatus" type="s">
+            <default>"gnome-system-monitor"</default>
+            <summary>Left Click Status</summary>
+            <description>Command to run on left click.</description>
+        </key>
+        <key name="rightclickstatus" type="b">
+            <default>true</default>
+            <summary>Right Click Status</summary>
+            <description>Enable right click menu.</description>
+        </key>
+        <key name="iconsstatus" type="b">
+            <default>true</default>
+            <summary>Icons Status</summary>
+            <description>Show icons next to values.</description>
+        </key>
+        <key name="showcolorsstatus" type="b">
+            <default>false</default>
+            <summary>Show Colors</summary>
+            <description>Enable dynamic colors based on resource usage.</description>
+        </key>
+        <key name="cpustatus" type="b">
+            <default>true</default>
+            <summary>CPU Status</summary>
+            <description>Show CPU usage.</description>
+        </key>
+        <key name="ramstatus" type="b">
+            <default>true</default>
+            <summary>RAM Status</summary>
+            <description>Show RAM usage.</description>
+        </key>
+        <key name="thermalcputemperaturestatus" type="b">
+            <default>true</default>
+            <summary>CPU Thermal Status</summary>
+            <description>Show CPU temperature.</description>
+        </key>
+        <key name="thermaltemperatureunit" type="i">
+            <default>0</default>
+            <summary>Temperature Unit</summary>
+            <description>0: Celsius, 1: Fahrenheit</description>
+        </key>
+    </schema>
+</schemalist>
