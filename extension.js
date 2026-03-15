@@ -239,9 +239,12 @@ const ResourceMonitor = GObject.registerClass(
 
         this._cpuLabel.text = `${usage.toFixed(this._decimalsStatus ? 1 : 0)}%`;
         if (this._showColorsStatus) {
-          this._cpuLabel.set_style(`color: ${this._getColorForValue(usage)};`);
+          const color = this._getColorForValue(usage);
+          this._cpuLabel.set_style(`color: ${color};`);
+          this._cpuIcon.set_style(`color: ${color};`);
         } else {
           this._cpuLabel.set_style("");
+          this._cpuIcon.set_style("");
         }
       } catch (e) {
         console.error(`ResourceBuzz Lite: CPU Error: ${e.message}`);
@@ -261,9 +264,12 @@ const ResourceMonitor = GObject.registerClass(
         const usage = total ? (100 * (total - available)) / total : 0;
         this._ramLabel.text = `${usage.toFixed(this._decimalsStatus ? 1 : 0)}%`;
         if (this._showColorsStatus) {
-          this._ramLabel.set_style(`color: ${this._getColorForValue(usage)};`);
+          const color = this._getColorForValue(usage);
+          this._ramLabel.set_style(`color: ${color};`);
+          this._ramIcon.set_style(`color: ${color};`);
         } else {
           this._ramLabel.set_style("");
+          this._ramIcon.set_style("");
         }
       } catch (e) {
         console.error(`ResourceBuzz Lite: RAM Error: ${e.message}`);

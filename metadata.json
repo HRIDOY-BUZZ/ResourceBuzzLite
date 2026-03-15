@@ -1,5 +1,5 @@
 {
-  "description": "ResourceBuzz Lite: A Lite and Minimal Resource Monitor",
+  "description": "ResourceBuzz Lite: A Simple Lite and Minimal Resource Monitor",
   "name": "ResourceBuzz Lite",
   "gettext-domain": "resourcebuzz-lite",
   "settings-schema": "dev.hridoybuzz.resourcebuzz-lite",
