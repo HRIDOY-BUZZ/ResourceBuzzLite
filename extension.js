@@ -16,7 +16,6 @@ const EXTENSION_POSITION = 'extensionposition';
 const DECIMALS_STATUS = 'decimalsstatus';
 const LEFT_CLICK_STATUS = 'leftclickstatus';
 const RIGHT_CLICK_STATUS = 'rightclickstatus';
-const ICONS_STATUS = 'iconsstatus';
 const SHOW_COLORS_STATUS = 'showcolorsstatus';
 const CPU_STATUS = 'cpustatus';
 const RAM_STATUS = 'ramstatus';
@@ -105,7 +104,6 @@ class ResourceMonitor extends PanelMenu.Button {
         this._decimalsStatus = this._settings.get_boolean(DECIMALS_STATUS);
         this._leftClickStatus = this._settings.get_string(LEFT_CLICK_STATUS);
         this._rightClickStatus = this._settings.get_boolean(RIGHT_CLICK_STATUS);
-        this._iconsStatus = this._settings.get_boolean(ICONS_STATUS);
         this._showColorsStatus = this._settings.get_boolean(SHOW_COLORS_STATUS);
         this._cpuStatus = this._settings.get_boolean(CPU_STATUS);
         this._ramStatus = this._settings.get_boolean(RAM_STATUS);
@@ -126,8 +124,7 @@ class ResourceMonitor extends PanelMenu.Button {
         this._ramBox.remove_all_children();
 
         if (this._cpuStatus) {
-            if (this._iconsStatus)
-                this._cpuBox.add_child(this._cpuIcon);
+            this._cpuBox.add_child(this._cpuIcon);
             this._cpuBox.add_child(this._cpuLabel);
             this._box.add_child(this._cpuBox);
         }
@@ -138,8 +135,7 @@ class ResourceMonitor extends PanelMenu.Button {
         }
 
         if (this._ramStatus) {
-            if (this._iconsStatus)
-                this._ramBox.add_child(this._ramIcon);
+            this._ramBox.add_child(this._ramIcon);
             this._ramBox.add_child(this._ramLabel);
             this._box.add_child(this._ramBox);
         }
@@ -151,7 +147,6 @@ class ResourceMonitor extends PanelMenu.Button {
             DECIMALS_STATUS,
             LEFT_CLICK_STATUS,
             RIGHT_CLICK_STATUS,
-            ICONS_STATUS,
             SHOW_COLORS_STATUS,
             CPU_STATUS,
             RAM_STATUS,

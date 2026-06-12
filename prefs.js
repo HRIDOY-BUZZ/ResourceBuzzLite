@@ -9,7 +9,6 @@ const BINDINGS = [
     ['refreshtime', 'refreshtime_spin', 'value', Gio.SettingsBindFlags.DEFAULT],
     ['extensionposition', 'position_combo', 'selected', Gio.SettingsBindFlags.DEFAULT],
     ['decimalsstatus', 'decimals_switch', 'active', Gio.SettingsBindFlags.DEFAULT],
-    ['iconsstatus', 'icons_switch', 'active', Gio.SettingsBindFlags.DEFAULT],
     ['showcolorsstatus', 'showcolors_switch', 'active', Gio.SettingsBindFlags.DEFAULT],
     ['cpustatus', 'cpu_switch', 'active', Gio.SettingsBindFlags.DEFAULT],
     ['ramstatus', 'ram_switch', 'active', Gio.SettingsBindFlags.DEFAULT],

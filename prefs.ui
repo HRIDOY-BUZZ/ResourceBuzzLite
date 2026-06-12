@@ -44,11 +44,6 @@
           </object>
         </child>
         <child>
-          <object class="AdwSwitchRow" id="icons_switch">
-            <property name="title">Show Icons</property>
-          </object>
-        </child>
-        <child>
           <object class="AdwSwitchRow" id="showcolors_switch">
             <property name="title">Show Usage Colors</property>
           </object>
