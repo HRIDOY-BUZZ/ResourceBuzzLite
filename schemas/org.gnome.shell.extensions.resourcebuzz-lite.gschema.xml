@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="resourcebuzz-lite">
-    <schema id="dev.hridoybuzz.resourcebuzz-lite" path="/dev/hridoybuzz/resourcebuzz-lite/">
+    <schema id="org.gnome.shell.extensions.resourcebuzz-lite" path="/org/gnome/shell/extensions/resourcebuzz-lite/">
         <key name="refreshtime" type="i">
             <default>2</default>
             <summary>Refresh Time</summary>
