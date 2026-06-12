@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="resourcebuzz-lite">
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<schemalist>
     <schema id="org.gnome.shell.extensions.resourcebuzz-lite" path="/org/gnome/shell/extensions/resourcebuzz-lite/">
         <key name="refreshtime" type="i">
+            <range min="1" max="60"/>
             <default>2</default>
             <summary>Refresh Time</summary>
             <description>Time in seconds between updates.</description>
         </key>
         <key name="extensionposition" type="i">
+            <range min="0" max="2"/>
             <default>2</default>
             <summary>Extension Position</summary>
             <description>0: left, 1: center, 2: right</description>
@@ -52,6 +55,7 @@
             <description>Show CPU temperature.</description>
         </key>
         <key name="thermaltemperatureunit" type="i">
+            <range min="0" max="1"/>
             <default>0</default>
             <summary>Temperature Unit</summary>
             <description>0: Celsius, 1: Fahrenheit</description>

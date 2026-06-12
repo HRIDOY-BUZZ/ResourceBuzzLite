@@ -1,362 +1,541 @@
-/* -*- mode: js2; js2-basic-offset: 4; indent-tabs-mode: nil -*- */
-/*
- * ResourceBuzz Lite
- */
+// SPDX-License-Identifier: GPL-2.0-or-later
 
-import GObject from "gi://GObject";
-import St from "gi://St";
-import Gio from "gi://Gio";
-import Clutter from "gi://Clutter";
-import GLib from "gi://GLib";
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import St from 'gi://St';
 
-import * as Main from "resource:///org/gnome/shell/ui/main.js";
-import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
-import * as Util from "resource:///org/gnome/shell/misc/util.js";
-import {
-  Extension,
-  gettext as _,
-} from "resource:///org/gnome/shell/extensions/extension.js";
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
-// Settings keys
-const REFRESH_TIME = "refreshtime";
-const EXTENSION_POSITION = "extensionposition";
-const DECIMALS_STATUS = "decimalsstatus";
-const LEFT_CLICK_STATUS = "leftclickstatus";
-const RIGHT_CLICK_STATUS = "rightclickstatus";
-const ICONS_STATUS = "iconsstatus";
-const SHOW_COLORS_STATUS = "showcolorsstatus";
-const CPU_STATUS = "cpustatus";
-const RAM_STATUS = "ramstatus";
-const THERMAL_CPU_TEMPERATURE_STATUS = "thermalcputemperaturestatus";
-const THERMAL_TEMPERATURE_UNIT = "thermaltemperatureunit";
+const REFRESH_TIME = 'refreshtime';
+const EXTENSION_POSITION = 'extensionposition';
+const DECIMALS_STATUS = 'decimalsstatus';
+const LEFT_CLICK_STATUS = 'leftclickstatus';
+const RIGHT_CLICK_STATUS = 'rightclickstatus';
+const ICONS_STATUS = 'iconsstatus';
+const SHOW_COLORS_STATUS = 'showcolorsstatus';
+const CPU_STATUS = 'cpustatus';
+const RAM_STATUS = 'ramstatus';
+const THERMAL_CPU_TEMPERATURE_STATUS = 'thermalcputemperaturestatus';
+const THERMAL_TEMPERATURE_UNIT = 'thermaltemperatureunit';
+
+const CPU_HWMON_DRIVERS = new Set([
+    'coretemp',
+    'cpu_thermal',
+    'k10temp',
+    'zenpower',
+]);
+const HWMON_PATH = '/sys/class/hwmon';
+const POSITION_NAMES = ['left', 'center', 'right'];
+const TEMPERATURE_RESCAN_SECONDS = 60;
+
+function clamp(value, minimum, maximum) {
+    return Math.min(Math.max(value, minimum), maximum);
+}
 
 const ResourceMonitor = GObject.registerClass(
-  class ResourceMonitor extends PanelMenu.Button {
-    _init({ settings, openPreferences, path, metadata }) {
-      super._init(0.0, metadata.name, false);
+class ResourceMonitor extends PanelMenu.Button {
+    _init({settings, openPreferences, path, name}) {
+        super._init(0.0, name, false);
 
-      this._settings = settings;
-      this._openPreferences = openPreferences;
-      this._path = path;
-      this._metadata = metadata;
+        this._settings = settings;
+        this._openPreferences = openPreferences;
+        this._path = path;
+        this._handlerIds = [];
+        this._cancellable = new Gio.Cancellable();
+        this._mainTimer = null;
+        this._refreshInProgress = false;
+        this._destroyed = false;
+        this._cpuTotalOld = null;
+        this._cpuIdleOld = null;
+        this._thermalSensors = [];
+        this._lastThermalScan = 0;
+        this._lastThermalError = null;
 
-      this._handlerIds = [];
-      this._cpuTotOld = 0;
-      this._cpuIdleOld = 0;
-      this._thermalPaths = [];
-
-      this._createGui();
-      this._loadSettings();
-      this._connectSignals();
-      this._detectThermalSensors();
-
-      this.connect("button-press-event", this._onClicked.bind(this));
-
-      this._mainTimer = GLib.timeout_add_seconds(
-        GLib.PRIORITY_DEFAULT,
-        this._refreshTime,
-        () => {
-            this._refresh();
-            return GLib.SOURCE_CONTINUE;
-        }
-      );
-      this._refresh();
+        this._createGui();
+        this._loadSettings();
+        this._connectSignals();
+        this._restartTimer();
+        this._refresh();
     }
 
     _createGui() {
-      this._box = new St.BoxLayout({ style_class: "panel-status-indicators-box" });
+        this._box = new St.BoxLayout({
+            style_class: 'panel-status-indicators-box',
+        });
 
-      // CPU Container
-      this._cpuBox = new St.BoxLayout();
-      this._cpuIcon = new St.Icon({
-        gicon: Gio.icon_new_for_string(this._path + "/icons/cpu-symbolic.svg"),
-        style_class: "system-status-icon",
-      });
-      this._cpuLabel = new St.Label({ y_align: Clutter.ActorAlign.CENTER });
-      this._thermalLabel = new St.Label({ y_align: Clutter.ActorAlign.CENTER });
-      
-      // RAM Container
-      this._ramBox = new St.BoxLayout();
-      this._ramIcon = new St.Icon({
-        gicon: Gio.icon_new_for_string(this._path + "/icons/ram-symbolic.svg"),
-        style_class: "system-status-icon",
-      });
-      this._ramLabel = new St.Label({ y_align: Clutter.ActorAlign.CENTER });
+        this._cpuBox = new St.BoxLayout();
+        this._cpuIcon = new St.Icon({
+            gicon: Gio.icon_new_for_string(`${this._path}/icons/cpu-symbolic.svg`),
+            style_class: 'system-status-icon',
+        });
+        this._cpuLabel = new St.Label({
+            text: 'CPU …',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
 
-      this.add_child(this._box);
+        this._thermalBox = new St.BoxLayout();
+        this._thermalLabel = new St.Label({
+            text: '(…)',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        this._ramBox = new St.BoxLayout();
+        this._ramIcon = new St.Icon({
+            gicon: Gio.icon_new_for_string(`${this._path}/icons/ram-symbolic.svg`),
+            style_class: 'system-status-icon',
+        });
+        this._ramLabel = new St.Label({
+            text: 'RAM …',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        this.add_child(this._box);
+        this.connect('button-press-event', this._onClicked.bind(this));
     }
 
     _loadSettings() {
-      this._refreshTime = this._settings.get_int(REFRESH_TIME);
-      this._decimalsStatus = this._settings.get_boolean(DECIMALS_STATUS);
-      this._leftClickStatus = this._settings.get_string(LEFT_CLICK_STATUS);
-      this._rightClickStatus = this._settings.get_boolean(RIGHT_CLICK_STATUS);
-      this._iconsStatus = this._settings.get_boolean(ICONS_STATUS);
-      this._showColorsStatus = this._settings.get_boolean(SHOW_COLORS_STATUS);
-      this._cpuStatus = this._settings.get_boolean(CPU_STATUS);
-      this._ramStatus = this._settings.get_boolean(RAM_STATUS);
-      this._thermalStatus = this._settings.get_boolean(THERMAL_CPU_TEMPERATURE_STATUS);
-      this._thermalUnit = this._settings.get_int(THERMAL_TEMPERATURE_UNIT); // 0: C, 1: F
+        this._refreshTime = clamp(this._settings.get_int(REFRESH_TIME), 1, 60);
+        this._decimalsStatus = this._settings.get_boolean(DECIMALS_STATUS);
+        this._leftClickStatus = this._settings.get_string(LEFT_CLICK_STATUS);
+        this._rightClickStatus = this._settings.get_boolean(RIGHT_CLICK_STATUS);
+        this._iconsStatus = this._settings.get_boolean(ICONS_STATUS);
+        this._showColorsStatus = this._settings.get_boolean(SHOW_COLORS_STATUS);
+        this._cpuStatus = this._settings.get_boolean(CPU_STATUS);
+        this._ramStatus = this._settings.get_boolean(RAM_STATUS);
+        this._thermalStatus = this._settings.get_boolean(THERMAL_CPU_TEMPERATURE_STATUS);
+        this._thermalUnit = clamp(
+            this._settings.get_int(THERMAL_TEMPERATURE_UNIT),
+            0,
+            1
+        );
 
-      this._updateGuiVisibility();
+        this._updateGuiVisibility();
     }
 
     _updateGuiVisibility() {
-      this._box.remove_all_children();
-      this._cpuBox.remove_all_children();
-      this._ramBox.remove_all_children();
+        this._box.remove_all_children();
+        this._cpuBox.remove_all_children();
+        this._thermalBox.remove_all_children();
+        this._ramBox.remove_all_children();
 
-      if (this._cpuStatus) {
-        if (this._iconsStatus) this._cpuBox.add_child(this._cpuIcon);
-        this._cpuBox.add_child(this._cpuLabel);
-        if (this._thermalStatus) this._cpuBox.add_child(this._thermalLabel);
-        this._box.add_child(this._cpuBox);
-      }
+        if (this._cpuStatus) {
+            if (this._iconsStatus)
+                this._cpuBox.add_child(this._cpuIcon);
+            this._cpuBox.add_child(this._cpuLabel);
+            this._box.add_child(this._cpuBox);
+        }
 
-      if (this._ramStatus) {
-        if (this._iconsStatus) this._ramBox.add_child(this._ramIcon);
-        this._ramBox.add_child(this._ramLabel);
-        this._box.add_child(this._ramBox);
-      }
+        if (this._thermalStatus) {
+            this._thermalBox.add_child(this._thermalLabel);
+            this._box.add_child(this._thermalBox);
+        }
+
+        if (this._ramStatus) {
+            if (this._iconsStatus)
+                this._ramBox.add_child(this._ramIcon);
+            this._ramBox.add_child(this._ramLabel);
+            this._box.add_child(this._ramBox);
+        }
     }
 
     _connectSignals() {
-      const keys = [
-        REFRESH_TIME, DECIMALS_STATUS, LEFT_CLICK_STATUS,
-        RIGHT_CLICK_STATUS, ICONS_STATUS, SHOW_COLORS_STATUS,
-        CPU_STATUS, RAM_STATUS, THERMAL_CPU_TEMPERATURE_STATUS,
-        THERMAL_TEMPERATURE_UNIT
-      ];
+        const keys = [
+            REFRESH_TIME,
+            DECIMALS_STATUS,
+            LEFT_CLICK_STATUS,
+            RIGHT_CLICK_STATUS,
+            ICONS_STATUS,
+            SHOW_COLORS_STATUS,
+            CPU_STATUS,
+            RAM_STATUS,
+            THERMAL_CPU_TEMPERATURE_STATUS,
+            THERMAL_TEMPERATURE_UNIT,
+        ];
 
-      keys.forEach(key => {
-        this._handlerIds.push(this._settings.connect(`changed::${key}`, () => {
-          this._loadSettings();
-          if (key === REFRESH_TIME) {
-            if (this._mainTimer) GLib.source_remove(this._mainTimer);
-            this._mainTimer = GLib.timeout_add_seconds(
-              GLib.PRIORITY_DEFAULT,
-              this._refreshTime,
-              () => {
-                  this._refresh();
-                  return GLib.SOURCE_CONTINUE;
-              }
-            );
-          }
-          this._refresh();
-        }));
-      });
+        for (const key of keys) {
+            const id = this._settings.connect(`changed::${key}`, () => {
+                this._loadSettings();
+                if (key === REFRESH_TIME)
+                    this._restartTimer();
+                this._refresh();
+            });
+            this._handlerIds.push(id);
+        }
+    }
+
+    _restartTimer() {
+        if (this._mainTimer) {
+            GLib.Source.remove(this._mainTimer);
+            this._mainTimer = null;
+        }
+
+        this._mainTimer = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            this._refreshTime,
+            () => {
+                this._refresh();
+                return GLib.SOURCE_CONTINUE;
+            }
+        );
     }
 
     async _loadFile(path) {
+        const file = Gio.File.new_for_path(path);
+
         return new Promise((resolve, reject) => {
-            let file = Gio.File.new_for_path(path);
-            file.load_contents_async(null, (file, res) => {
+            file.load_contents_async(this._cancellable, (source, result) => {
                 try {
-                    let [ok, contents] = file.load_contents_finish(res);
-                    if (ok) {
-                        resolve(new TextDecoder().decode(contents));
-                    } else {
-                        reject(new Error(`Failed to load ${path}`));
-                    }
-                } catch (e) {
-                    reject(e);
+                    const [ok, contents] = source.load_contents_finish(result);
+                    if (!ok)
+                        throw new Error(`Failed to load ${path}`);
+                    resolve(new TextDecoder().decode(contents));
+                } catch (error) {
+                    reject(error);
                 }
             });
         });
     }
 
-    async _detectThermalSensors() {
-      try {
-        const proc = Gio.Subprocess.new(
-          ["bash", "-c", 'for i in /sys/class/hwmon/hwmon*/temp*_input; do NAME="$(<$(dirname $i)/name)"; if [[ "$NAME" == "coretemp" ]] || [[ "$NAME" == "k10temp" ]] || [[ "$NAME" == "zenpower" ]] || [[ "$NAME" == "cpu_thermal" ]]; then echo "$i"; fi done'],
-          Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
+    _enumerateNames(path) {
+        const names = [];
+        const directory = Gio.File.new_for_path(path);
+        const enumerator = directory.enumerate_children(
+            'standard::name',
+            Gio.FileQueryInfoFlags.NONE,
+            this._cancellable
         );
-        proc.communicate_utf8_async(null, null, (proc, res) => {
-            try {
-                let [ok, stdout] = proc.communicate_utf8_finish(res);
-                if (ok && stdout) {
-                    this._thermalPaths = stdout.trim().split("\n");
+
+        try {
+            let info;
+            while ((info = enumerator.next_file(this._cancellable)) !== null)
+                names.push(info.get_name());
+        } finally {
+            enumerator.close(this._cancellable);
+        }
+
+        return names;
+    }
+
+    async _detectThermalSensors() {
+        const sensors = [];
+
+        try {
+            for (const hwmonName of this._enumerateNames(HWMON_PATH)) {
+                const hwmonPath = `${HWMON_PATH}/${hwmonName}`;
+                const driver = (await this._loadFile(`${hwmonPath}/name`)).trim();
+                if (!CPU_HWMON_DRIVERS.has(driver))
+                    continue;
+
+                for (const fileName of this._enumerateNames(hwmonPath)) {
+                    if (!/^temp\d+_input$/.test(fileName))
+                        continue;
+
+                    const inputPath = `${hwmonPath}/${fileName}`;
+                    const labelPath = inputPath.replace(/_input$/, '_label');
+                    let label = `${driver} ${fileName.replace('_input', '')}`;
+
+                    try {
+                        label = (await this._loadFile(labelPath)).trim() || label;
+                    } catch (error) {
+                        if (!this._isNotFoundError(error))
+                            throw error;
+                    }
+
+                    sensors.push({
+                        device: hwmonPath,
+                        driver,
+                        label,
+                        path: inputPath,
+                    });
                 }
-            } catch (e) {}
-        });
-      } catch (e) {
-        console.error("ResourceBuzz Lite: Failed to detect thermal sensors", e);
-      }
-    }
-
-    _getColorForValue(value, isTemp = false) {
-      if (isTemp) {
-        if (value <= 25) return "#57e389";
-        if (value <= 45) return "#f8e45c";
-        if (value <= 60) return "#ffa348";
-        if (value <= 85) return "#ed333b";
-        if (value <= 100) return "#a51d2d";
-        return "#000000";
-      } else {
-        if (value <= 25) return "#57e389";
-        if (value <= 50) return "#f8e45c";
-        if (value <= 70) return "#ffa348";
-        if (value <= 90) return "#ed333b";
-        return "#a51d2d";
-      }
-    }
-
-    _onClicked(actor, event) {
-      if (event.get_button() === 1) { // Left click
-        if (this._leftClickStatus) {
-          Util.spawnCommandLine(this._leftClickStatus);
+            }
+        } catch (error) {
+            if (!this._isCancelledError(error))
+                this._logThermalError(`sensor discovery failed: ${error.message}`);
         }
-      } else if (event.get_button() === 3) { // Right click
-        if (this._rightClickStatus) {
-          this._openPreferences();
-        }
-      }
+
+        this._thermalSensors = sensors;
+        this._lastThermalScan = GLib.get_monotonic_time() / GLib.USEC_PER_SEC;
     }
 
-    _refresh() {
-      if (this._cpuStatus) this._refreshCpu();
-      if (this._ramStatus) this._refreshRam();
-      if (this._thermalStatus) this._refreshThermal();
+    _isNotFoundError(error) {
+        return error.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND) ?? false;
+    }
+
+    _isCancelledError(error) {
+        return error.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED) ?? false;
+    }
+
+    _logThermalError(message) {
+        if (message === this._lastThermalError)
+            return;
+
+        this._lastThermalError = message;
+        console.warn(`ResourceBuzz Lite: ${message}`);
+    }
+
+    _onClicked(_actor, event) {
+        if (event.get_button() === 1 && this._leftClickStatus)
+            Util.spawnCommandLine(this._leftClickStatus);
+        else if (event.get_button() === 3 && this._rightClickStatus)
+            this._openPreferences();
+    }
+
+    async _refresh() {
+        if (this._refreshInProgress || this._destroyed)
+            return;
+
+        this._refreshInProgress = true;
+        try {
+            const updates = [];
+            if (this._cpuStatus)
+                updates.push(this._refreshCpu());
+            if (this._ramStatus)
+                updates.push(this._refreshRam());
+            if (this._thermalStatus)
+                updates.push(this._refreshThermal());
+            await Promise.all(updates);
+        } catch (error) {
+            if (!this._isCancelledError(error))
+                console.error(`ResourceBuzz Lite: refresh error: ${error.message}`);
+        } finally {
+            this._refreshInProgress = false;
+        }
     }
 
     async _refreshCpu() {
-      try {
-        const content = await this._loadFile("/proc/stat");
-        const line = content.split("\n")[0];
-        const entry = line.trim().split(/\s+/);
-        const user = parseInt(entry[1], 10);
-        const nice = parseInt(entry[2], 10);
-        const system = parseInt(entry[3], 10);
-        const idleVal = parseInt(entry[4], 10);
-        const total = user + nice + system + idleVal;
+        try {
+            const content = await this._loadFile('/proc/stat');
+            const values = content.split('\n', 1)[0]
+                .trim()
+                .split(/\s+/)
+                .slice(1)
+                .map(value => Number.parseInt(value, 10));
 
-        const deltaTotal = total - this._cpuTotOld;
-        const deltaIdle = idleVal - this._cpuIdleOld;
-        const usage = deltaTotal ? (100 * (deltaTotal - deltaIdle)) / deltaTotal : 0;
+            if (values.length < 8 || values.some(Number.isNaN))
+                throw new Error('Malformed /proc/stat CPU data');
 
-        this._cpuTotOld = total;
-        this._cpuIdleOld = idleVal;
+            // guest and guest_nice are already included in user and nice.
+            const total = values.slice(0, 8).reduce((sum, value) => sum + value, 0);
+            const idle = values[3] + values[4];
 
-        this._cpuLabel.text = `${usage.toFixed(this._decimalsStatus ? 1 : 0)}%`;
-        if (this._showColorsStatus) {
-          const color = this._getColorForValue(usage);
-          this._cpuLabel.set_style(`color: ${color};`);
-          this._cpuIcon.set_style(`color: ${color};`);
-        } else {
-          this._cpuLabel.set_style("");
-          this._cpuIcon.set_style("");
+            if (this._cpuTotalOld !== null) {
+                const totalDelta = total - this._cpuTotalOld;
+                const idleDelta = idle - this._cpuIdleOld;
+                const usage = totalDelta > 0
+                    ? 100 * (totalDelta - idleDelta) / totalDelta
+                    : 0;
+                this._setUsage(this._cpuLabel, this._cpuIcon, 'CPU', usage);
+            }
+
+            this._cpuTotalOld = total;
+            this._cpuIdleOld = idle;
+        } catch (error) {
+            if (!this._isCancelledError(error)) {
+                this._cpuLabel.text = 'CPU N/A';
+                console.error(`ResourceBuzz Lite: CPU error: ${error.message}`);
+            }
         }
-      } catch (e) {
-        console.error(`ResourceBuzz Lite: CPU Error: ${e.message}`);
-      }
     }
 
     async _refreshRam() {
-      try {
-        const content = await this._loadFile("/proc/meminfo");
-        const lines = content.split("\n");
-        let total = 0, available = 0;
-        for (const line of lines) {
-          if (line.startsWith("MemTotal:")) total = parseInt(line.match(/\d+/)[0], 10);
-          if (line.startsWith("MemAvailable:")) available = parseInt(line.match(/\d+/)[0], 10);
-          if (total && available) break;
+        try {
+            const content = await this._loadFile('/proc/meminfo');
+            const totalMatch = /^MemTotal:\s+(\d+)/m.exec(content);
+            const availableMatch = /^MemAvailable:\s+(\d+)/m.exec(content);
+
+            if (!totalMatch || !availableMatch)
+                throw new Error('Malformed /proc/meminfo data');
+
+            const total = Number.parseInt(totalMatch[1], 10);
+            const available = Number.parseInt(availableMatch[1], 10);
+            if (!Number.isFinite(total) || !Number.isFinite(available) || total <= 0)
+                throw new Error('Invalid /proc/meminfo values');
+
+            const usage = 100 * (total - available) / total;
+            this._setUsage(this._ramLabel, this._ramIcon, 'RAM', usage);
+        } catch (error) {
+            if (!this._isCancelledError(error)) {
+                this._ramLabel.text = 'RAM N/A';
+                console.error(`ResourceBuzz Lite: RAM error: ${error.message}`);
+            }
         }
-        const usage = total ? (100 * (total - available)) / total : 0;
-        this._ramLabel.text = `${usage.toFixed(this._decimalsStatus ? 1 : 0)}%`;
-        if (this._showColorsStatus) {
-          const color = this._getColorForValue(usage);
-          this._ramLabel.set_style(`color: ${color};`);
-          this._ramIcon.set_style(`color: ${color};`);
-        } else {
-          this._ramLabel.set_style("");
-          this._ramIcon.set_style("");
-        }
-      } catch (e) {
-        console.error(`ResourceBuzz Lite: RAM Error: ${e.message}`);
-      }
     }
 
     async _refreshThermal() {
-      if (this._thermalPaths.length === 0) {
-        this._thermalLabel.text = "[N/A]";
-        return;
-      }
+        const now = GLib.get_monotonic_time() / GLib.USEC_PER_SEC;
+        if (this._thermalSensors.length === 0 ||
+            now - this._lastThermalScan >= TEMPERATURE_RESCAN_SECONDS)
+            await this._detectThermalSensors();
 
-      let totalTemp = 0;
-      let count = 0;
-
-      for (const path of this._thermalPaths) {
-        try {
-          const content = await this._loadFile(path);
-          const temp = parseInt(content.trim(), 10) / 1000;
-          if (!isNaN(temp)) {
-            totalTemp += temp;
-            count++;
-          }
-        } catch (e) {}
-      }
-
-      if (count > 0) {
-        const avgC = totalTemp / count;
-        const prec = this._decimalsStatus ? 1 : 0;
-
-        if (this._thermalUnit === 1) { // Fahrenheit
-          const avgF = (avgC * 9 / 5) + 32;
-          this._thermalLabel.text = `[${avgF.toFixed(prec)}°F]`;
-        } else { // Celsius
-          this._thermalLabel.text = `[${avgC.toFixed(prec)}°C]`;
+        if (this._thermalSensors.length === 0) {
+            this._setTemperatureUnavailable();
+            return;
         }
 
-        if (this._showColorsStatus) {
-          this._thermalLabel.set_style(`color: ${this._getColorForValue(avgC, true)};`);
-        } else {
-          this._thermalLabel.set_style("");
+        const readings = [];
+        let failedReads = 0;
+        for (const sensor of this._thermalSensors) {
+            try {
+                const content = await this._loadFile(sensor.path);
+                const value = Number.parseInt(content.trim(), 10) / 1000;
+                if (Number.isFinite(value) && value > -100 && value < 250)
+                    readings.push({...sensor, value});
+            } catch (error) {
+                if (this._isCancelledError(error))
+                    return;
+                failedReads++;
+            }
         }
-      }
+
+        if (readings.length === 0) {
+            this._thermalSensors = [];
+            this._setTemperatureUnavailable();
+            this._logThermalError('all CPU temperature sensor reads failed');
+            return;
+        }
+
+        const selectedReadings = this._selectThermalReadings(readings);
+
+        // A single panel value represents the hottest valid CPU-related sensor.
+        const hottest = selectedReadings.reduce((current, reading) =>
+            reading.value > current.value ? reading : current
+        );
+        const precision = this._decimalsStatus ? 1 : 0;
+        const displayValue = this._thermalUnit === 1
+            ? hottest.value * 9 / 5 + 32
+            : hottest.value;
+        const unit = this._thermalUnit === 1 ? 'F' : 'C';
+
+        this._thermalLabel.text = `(${displayValue.toFixed(precision)}°${unit})`;
+        this._thermalLabel.accessible_name =
+            `Hottest CPU temperature: ${hottest.label}`;
+        this._thermalLabel.set_style(this._showColorsStatus
+            ? `color: ${this._getTemperatureColor(hottest.value)};`
+            : null);
+        if (failedReads > 0)
+            this._logThermalError(`${failedReads} CPU temperature sensor reads failed`);
+        else
+            this._lastThermalError = null;
+    }
+
+    _selectThermalReadings(readings) {
+        const physicalDies = new Set(
+            readings
+                .filter(reading =>
+                    ['k10temp', 'zenpower'].includes(reading.driver) &&
+                    /^Tdie$/i.test(reading.label)
+                )
+                .map(reading => reading.device)
+        );
+
+        return readings.filter(reading =>
+            !(physicalDies.has(reading.device) && /^Tctl$/i.test(reading.label))
+        );
+    }
+
+    _setUsage(label, icon, prefix, usage) {
+        label.text = `${prefix} ${usage.toFixed(this._decimalsStatus ? 1 : 0)}%`;
+        const style = this._showColorsStatus
+            ? `color: ${this._getUsageColor(usage)};`
+            : null;
+        label.set_style(style);
+        icon.set_style(style);
+    }
+
+    _setTemperatureUnavailable() {
+        this._thermalLabel.text = '(N/A)';
+        this._thermalLabel.set_style(null);
+    }
+
+    _getUsageColor(value) {
+        if (value <= 25)
+            return '#57e389';
+        if (value <= 50)
+            return '#f8e45c';
+        if (value <= 70)
+            return '#ffa348';
+        if (value <= 90)
+            return '#ed333b';
+        return '#a51d2d';
+    }
+
+    _getTemperatureColor(value) {
+        if (value <= 25)
+            return '#57e389';
+        if (value <= 45)
+            return '#f8e45c';
+        if (value <= 60)
+            return '#ffa348';
+        if (value <= 85)
+            return '#ed333b';
+        return '#a51d2d';
     }
 
     destroy() {
-      if (this._mainTimer) GLib.source_remove(this._mainTimer);
-      this._handlerIds.forEach(id => this._settings.disconnect(id));
-      super.destroy();
+        this._destroyed = true;
+        this._cancellable.cancel();
+
+        if (this._mainTimer) {
+            GLib.Source.remove(this._mainTimer);
+            this._mainTimer = null;
+        }
+
+        for (const id of this._handlerIds)
+            this._settings.disconnect(id);
+        this._handlerIds = [];
+
+        super.destroy();
     }
-  }
-);
+});
 
 export default class ResourceMonitorExtension extends Extension {
-  enable() {
-    this._settings = this.getSettings();
-    this._indicator = null;
-
-    this._updatePosition();
-    this._posId = this._settings.connect(`changed::${EXTENSION_POSITION}`, () => this._updatePosition());
-  }
-
-  _updatePosition() {
-    if (this._indicator) {
-        this._indicator.destroy();
+    enable() {
+        this._settings = this.getSettings();
         this._indicator = null;
+        this._positionId = this._settings.connect(
+            `changed::${EXTENSION_POSITION}`,
+            () => this._updatePosition()
+        );
+        this._updatePosition();
     }
-    
-    this._indicator = new ResourceMonitor({
-      settings: this._settings,
-      openPreferences: () => this.openPreferences(),
-      path: this.path,
-      metadata: this.metadata,
-    });
 
-    const posIdx = this._settings.get_int(EXTENSION_POSITION);
-    const positions = ["left", "center", "right"];
-    const pos = positions[posIdx] || "right";
-    Main.panel.addToStatusArea(this.uuid, this._indicator, 0, pos);
-  }
+    _updatePosition() {
+        this._indicator?.destroy();
 
-  disable() {
-    this._settings.disconnect(this._posId);
-    if (this._indicator) {
-        this._indicator.destroy();
+        this._indicator = new ResourceMonitor({
+            settings: this._settings,
+            openPreferences: () => this.openPreferences(),
+            path: this.path,
+            name: this.metadata.name,
+        });
+
+        const positionIndex = clamp(
+            this._settings.get_int(EXTENSION_POSITION),
+            0,
+            POSITION_NAMES.length - 1
+        );
+        Main.panel.addToStatusArea(
+            this.uuid,
+            this._indicator,
+            0,
+            POSITION_NAMES[positionIndex]
+        );
+    }
+
+    disable() {
+        if (this._positionId) {
+            this._settings.disconnect(this._positionId);
+            this._positionId = null;
+        }
+
+        this._indicator?.destroy();
         this._indicator = null;
+        this._settings = null;
     }
-    this._settings = null;
-  }
 }

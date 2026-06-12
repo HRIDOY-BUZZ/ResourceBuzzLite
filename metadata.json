@@ -1,7 +1,6 @@
 {
-  "description": "ResourceBuzz Lite: A Simple Lite and Minimal Resource Monitor",
+  "description": "Show CPU usage, RAM usage, and the hottest CPU temperature in the top bar.",
   "name": "ResourceBuzz Lite",
-  "gettext-domain": "resourcebuzz-lite",
   "settings-schema": "org.gnome.shell.extensions.resourcebuzz-lite",
   "shell-version": [
     "45",
@@ -11,7 +10,6 @@
     "49",
     "50"
   ],
-  "uuid": "ResourceBuzzLite@hridoybuzz.dev",
-  "version": 1,
-  "author": "hridoybuzz.dev"
+  "url": "https://github.com/HRIDOY-BUZZ/ResourceBuzzLite",
+  "uuid": "ResourceBuzzLite@hridoybuzz.dev"
 }

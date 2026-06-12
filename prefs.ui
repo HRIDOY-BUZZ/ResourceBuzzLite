@@ -1,34 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
 <interface>
   <requires lib="gtk" version="4.0"/>
   <requires lib="adw" version="1.0"/>
+
   <object class="AdwPreferencesPage" id="settings_page">
     <property name="title">Settings</property>
-    <property name="icon-name">settings-symbolic</property>
+    <property name="icon-name">preferences-system-symbolic</property>
     <child>
       <object class="AdwPreferencesGroup">
-        <property name="title">General Settings</property>
+        <property name="title">Display</property>
         <child>
           <object class="AdwSpinRow" id="refreshtime_spin">
-            <property name="title">Refresh Time (seconds)</property>
+            <property name="title">Refresh Interval</property>
+            <property name="subtitle">Seconds between resource updates</property>
             <property name="adjustment">
               <object class="GtkAdjustment">
                 <property name="lower">1</property>
                 <property name="upper">60</property>
                 <property name="step-increment">1</property>
+                <property name="page-increment">5</property>
               </object>
             </property>
           </object>
         </child>
         <child>
           <object class="AdwComboRow" id="position_combo">
-            <property name="title">Extension Position</property>
+            <property name="title">Panel Position</property>
             <property name="model">
               <object class="GtkStringList">
                 <items>
-                  <item translatable="yes">Left</item>
-                  <item translatable="yes">Center</item>
-                  <item translatable="yes">Right</item>
+                  <item>Left</item>
+                  <item>Center</item>
+                  <item>Right</item>
                 </items>
               </object>
             </property>
@@ -46,22 +50,29 @@
         </child>
         <child>
           <object class="AdwSwitchRow" id="showcolors_switch">
-            <property name="title">Show Colors</property>
+            <property name="title">Show Usage Colors</property>
           </object>
         </child>
       </object>
     </child>
+
     <child>
       <object class="AdwPreferencesGroup">
-        <property name="title">Visibility</property>
+        <property name="title">Resources</property>
         <child>
           <object class="AdwSwitchRow" id="cpu_switch">
-            <property name="title">Show CPU Usage (%)</property>
+            <property name="title">CPU Usage</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSwitchRow" id="ram_switch">
+            <property name="title">RAM Usage</property>
           </object>
         </child>
         <child>
           <object class="AdwSwitchRow" id="thermal_switch">
-            <property name="title">Show CPU Temperature</property>
+            <property name="title">CPU Temperature</property>
+            <property name="subtitle">Show the hottest valid CPU-related sensor</property>
           </object>
         </child>
         <child>
@@ -70,16 +81,28 @@
             <property name="model">
               <object class="GtkStringList">
                 <items>
-                  <item translatable="yes">Celsius (°C)</item>
-                  <item translatable="yes">Fahrenheit (°F)</item>
+                  <item>Celsius (°C)</item>
+                  <item>Fahrenheit (°F)</item>
                 </items>
               </object>
             </property>
           </object>
         </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="AdwPreferencesGroup">
+        <property name="title">Mouse Actions</property>
         <child>
-          <object class="AdwSwitchRow" id="ram_switch">
-            <property name="title">Show RAM Usage (%)</property>
+          <object class="AdwEntryRow" id="left_click_entry">
+            <property name="title">Left-click Command</property>
+            <property name="show-apply-button">true</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSwitchRow" id="right_click_switch">
+            <property name="title">Right-click Opens Preferences</property>
           </object>
         </child>
       </object>
@@ -94,7 +117,7 @@
         <child>
           <object class="AdwActionRow">
             <property name="title">ResourceBuzz Lite</property>
-            <property name="subtitle">A Lite and Minimal Resource Monitor</property>
+            <property name="subtitle">CPU, RAM, and CPU temperature monitor</property>
           </object>
         </child>
         <child>
@@ -105,8 +128,8 @@
         </child>
         <child>
           <object class="AdwActionRow">
-            <property name="title">Version</property>
-            <property name="subtitle">1.0.0</property>
+            <property name="title">Source Code</property>
+            <property name="subtitle">github.com/HRIDOY-BUZZ/ResourceBuzzLite</property>
           </object>
         </child>
       </object>
