@@ -74,7 +74,8 @@ class ResourceMonitor extends PanelMenu.Button {
             style_class: 'system-status-icon',
         });
         this._cpuLabel = new St.Label({
-            text: 'CPU …',
+            text: '…',
+            accessible_name: 'CPU usage',
             y_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -90,7 +91,8 @@ class ResourceMonitor extends PanelMenu.Button {
             style_class: 'system-status-icon',
         });
         this._ramLabel = new St.Label({
-            text: 'RAM …',
+            text: '…',
+            accessible_name: 'RAM usage',
             y_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -330,14 +332,14 @@ class ResourceMonitor extends PanelMenu.Button {
                 const usage = totalDelta > 0
                     ? 100 * (totalDelta - idleDelta) / totalDelta
                     : 0;
-                this._setUsage(this._cpuLabel, this._cpuIcon, 'CPU', usage);
+                this._setUsage(this._cpuLabel, this._cpuIcon, usage);
             }
 
             this._cpuTotalOld = total;
             this._cpuIdleOld = idle;
         } catch (error) {
             if (!this._isCancelledError(error)) {
-                this._cpuLabel.text = 'CPU N/A';
+                this._cpuLabel.text = 'N/A';
                 console.error(`ResourceBuzz Lite: CPU error: ${error.message}`);
             }
         }
@@ -358,10 +360,10 @@ class ResourceMonitor extends PanelMenu.Button {
                 throw new Error('Invalid /proc/meminfo values');
 
             const usage = 100 * (total - available) / total;
-            this._setUsage(this._ramLabel, this._ramIcon, 'RAM', usage);
+            this._setUsage(this._ramLabel, this._ramIcon, usage);
         } catch (error) {
             if (!this._isCancelledError(error)) {
-                this._ramLabel.text = 'RAM N/A';
+                this._ramLabel.text = 'N/A';
                 console.error(`ResourceBuzz Lite: RAM error: ${error.message}`);
             }
         }
@@ -439,8 +441,8 @@ class ResourceMonitor extends PanelMenu.Button {
         );
     }
 
-    _setUsage(label, icon, prefix, usage) {
-        label.text = `${prefix} ${usage.toFixed(this._decimalsStatus ? 1 : 0)}%`;
+    _setUsage(label, icon, usage) {
+        label.text = `${usage.toFixed(this._decimalsStatus ? 1 : 0)}%`;
         const style = this._showColorsStatus
             ? `color: ${this._getUsageColor(usage)};`
             : null;
