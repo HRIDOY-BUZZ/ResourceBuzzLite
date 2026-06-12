@@ -39,7 +39,7 @@ function clamp(value, minimum, maximum) {
 const ResourceMonitor = GObject.registerClass(
 class ResourceMonitor extends PanelMenu.Button {
     _init({settings, openPreferences, path, name}) {
-        super._init(0.0, name, false);
+        super._init(0.0, name, true);
 
         this._settings = settings;
         this._openPreferences = openPreferences;
@@ -56,6 +56,7 @@ class ResourceMonitor extends PanelMenu.Button {
         this._lastThermalError = null;
 
         this._createGui();
+        this._createClickGestures();
         this._loadSettings();
         this._connectSignals();
         this._restartTimer();
@@ -96,7 +97,45 @@ class ResourceMonitor extends PanelMenu.Button {
         });
 
         this.add_child(this._box);
-        this.connect('button-press-event', this._onClicked.bind(this));
+    }
+
+    _createClickGestures() {
+        if (!Clutter.ClickGesture) {
+            this.connect('button-press-event', (_actor, event) =>
+                this._onButtonPress(event));
+            return;
+        }
+
+        const leftClickGesture = new Clutter.ClickGesture({
+            required_button: Clutter.BUTTON_PRIMARY,
+            recognize_on_press: true,
+        });
+        leftClickGesture.connect('recognize', () => this._launchLeftClickCommand());
+        this.add_action(leftClickGesture);
+
+        const rightClickGesture = new Clutter.ClickGesture({
+            required_button: Clutter.BUTTON_SECONDARY,
+            recognize_on_press: true,
+        });
+        rightClickGesture.connect('recognize', () => {
+            if (this._rightClickStatus)
+                this._openPreferences();
+        });
+        this.add_action(rightClickGesture);
+    }
+
+    _onButtonPress(event) {
+        if (event.get_button() === Clutter.BUTTON_PRIMARY) {
+            this._launchLeftClickCommand();
+            return Clutter.EVENT_STOP;
+        }
+
+        if (event.get_button() === Clutter.BUTTON_SECONDARY && this._rightClickStatus) {
+            this._openPreferences();
+            return Clutter.EVENT_STOP;
+        }
+
+        return Clutter.EVENT_PROPAGATE;
     }
 
     _loadSettings() {
@@ -276,11 +315,16 @@ class ResourceMonitor extends PanelMenu.Button {
         console.warn(`ResourceBuzz Lite: ${message}`);
     }
 
-    _onClicked(_actor, event) {
-        if (event.get_button() === 1 && this._leftClickStatus)
-            Util.spawnCommandLine(this._leftClickStatus);
-        else if (event.get_button() === 3 && this._rightClickStatus)
-            this._openPreferences();
+    _launchLeftClickCommand() {
+        if (!this._leftClickStatus)
+            return;
+
+        const command = this._leftClickStatus === 'gnome-system-monitor' &&
+            !GLib.find_program_in_path('gnome-system-monitor') &&
+            GLib.find_program_in_path('resources')
+            ? 'resources'
+            : this._leftClickStatus;
+        Util.spawnCommandLine(command);
     }
 
     async _refresh() {

@@ -20,14 +20,14 @@
             <description>Show decimal places for values.</description>
         </key>
         <key name="leftclickstatus" type="s">
-            <default>"gnome-system-monitor"</default>
+            <default>"resources"</default>
             <summary>Left Click Status</summary>
             <description>Command to run on left click.</description>
         </key>
         <key name="rightclickstatus" type="b">
             <default>true</default>
             <summary>Right Click Status</summary>
-            <description>Enable right click menu.</description>
+            <description>Open Preferences on right click.</description>
         </key>
         <key name="showcolorsstatus" type="b">
             <default>false</default>
