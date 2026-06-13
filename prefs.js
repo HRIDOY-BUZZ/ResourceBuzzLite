@@ -15,7 +15,7 @@ const BINDINGS = [
     ['thermalcputemperaturestatus', 'thermal_switch', 'active', Gio.SettingsBindFlags.DEFAULT],
     ['thermaltemperatureunit', 'thermal_unit_combo', 'selected', Gio.SettingsBindFlags.DEFAULT],
     ['thermalcputemperaturestatus', 'thermal_unit_combo', 'sensitive', Gio.SettingsBindFlags.GET],
-    ['leftclickstatus', 'left_click_entry', 'text', Gio.SettingsBindFlags.DEFAULT],
+    ['leftclickapp', 'left_click_app_combo', 'selected', Gio.SettingsBindFlags.DEFAULT],
     ['rightclickstatus', 'right_click_switch', 'active', Gio.SettingsBindFlags.DEFAULT],
 ];
 

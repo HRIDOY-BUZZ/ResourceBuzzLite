@@ -9,12 +9,11 @@ import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 const REFRESH_TIME = 'refreshtime';
 const EXTENSION_POSITION = 'extensionposition';
 const DECIMALS_STATUS = 'decimalsstatus';
-const LEFT_CLICK_STATUS = 'leftclickstatus';
+const LEFT_CLICK_APP = 'leftclickapp';
 const RIGHT_CLICK_STATUS = 'rightclickstatus';
 const SHOW_COLORS_STATUS = 'showcolorsstatus';
 const CPU_STATUS = 'cpustatus';
@@ -31,6 +30,11 @@ const CPU_HWMON_DRIVERS = new Set([
 const HWMON_PATH = '/sys/class/hwmon';
 const POSITION_NAMES = ['left', 'center', 'right'];
 const TEMPERATURE_RESCAN_SECONDS = 60;
+const RESOURCE_APP_IDS = [
+    'net.nokyan.Resources.desktop',
+    'org.gnome.SystemMonitor.desktop',
+    'io.missioncenter.MissionCenter.desktop',
+];
 
 function clamp(value, minimum, maximum) {
     return Math.min(Math.max(value, minimum), maximum);
@@ -110,7 +114,7 @@ class ResourceMonitor extends PanelMenu.Button {
             required_button: Clutter.BUTTON_PRIMARY,
             recognize_on_press: true,
         });
-        leftClickGesture.connect('recognize', () => this._launchLeftClickCommand());
+        leftClickGesture.connect('recognize', () => this._launchSelectedApp());
         this.add_action(leftClickGesture);
 
         const rightClickGesture = new Clutter.ClickGesture({
@@ -126,7 +130,7 @@ class ResourceMonitor extends PanelMenu.Button {
 
     _onButtonPress(event) {
         if (event.get_button() === Clutter.BUTTON_PRIMARY) {
-            this._launchLeftClickCommand();
+            this._launchSelectedApp();
             return Clutter.EVENT_STOP;
         }
 
@@ -141,7 +145,7 @@ class ResourceMonitor extends PanelMenu.Button {
     _loadSettings() {
         this._refreshTime = clamp(this._settings.get_int(REFRESH_TIME), 1, 60);
         this._decimalsStatus = this._settings.get_boolean(DECIMALS_STATUS);
-        this._leftClickStatus = this._settings.get_string(LEFT_CLICK_STATUS);
+        this._leftClickApp = clamp(this._settings.get_int(LEFT_CLICK_APP), 0, 2);
         this._rightClickStatus = this._settings.get_boolean(RIGHT_CLICK_STATUS);
         this._showColorsStatus = this._settings.get_boolean(SHOW_COLORS_STATUS);
         this._cpuStatus = this._settings.get_boolean(CPU_STATUS);
@@ -184,7 +188,7 @@ class ResourceMonitor extends PanelMenu.Button {
         const keys = [
             REFRESH_TIME,
             DECIMALS_STATUS,
-            LEFT_CLICK_STATUS,
+            LEFT_CLICK_APP,
             RIGHT_CLICK_STATUS,
             SHOW_COLORS_STATUS,
             CPU_STATUS,
@@ -315,16 +319,19 @@ class ResourceMonitor extends PanelMenu.Button {
         console.warn(`ResourceBuzz Lite: ${message}`);
     }
 
-    _launchLeftClickCommand() {
-        if (!this._leftClickStatus)
+    _launchSelectedApp() {
+        const appId = RESOURCE_APP_IDS[this._leftClickApp];
+        const appInfo = Gio.AppInfo.get_all().find(info => info.get_id() === appId);
+        if (!appInfo) {
+            console.warn(`ResourceBuzz Lite: selected app is not installed: ${appId}`);
             return;
+        }
 
-        const command = this._leftClickStatus === 'gnome-system-monitor' &&
-            !GLib.find_program_in_path('gnome-system-monitor') &&
-            GLib.find_program_in_path('resources')
-            ? 'resources'
-            : this._leftClickStatus;
-        Util.spawnCommandLine(command);
+        try {
+            appInfo.launch([], null);
+        } catch (error) {
+            console.error(`ResourceBuzz Lite: failed to launch ${appId}: ${error.message}`);
+        }
     }
 
     async _refresh() {

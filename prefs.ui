@@ -90,9 +90,18 @@
       <object class="AdwPreferencesGroup">
         <property name="title">Mouse Actions</property>
         <child>
-          <object class="AdwEntryRow" id="left_click_entry">
-            <property name="title">Left-click Command</property>
-            <property name="show-apply-button">true</property>
+          <object class="AdwComboRow" id="left_click_app_combo">
+            <property name="title">Left-click App</property>
+            <property name="subtitle">App to open when the panel indicator is clicked</property>
+            <property name="model">
+              <object class="GtkStringList">
+                <items>
+                  <item>Resources</item>
+                  <item>GNOME System Monitor</item>
+                  <item>Mission Center</item>
+                </items>
+              </object>
+            </property>
           </object>
         </child>
         <child>
