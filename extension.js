@@ -14,6 +14,7 @@ const REFRESH_TIME = 'refreshtime';
 const EXTENSION_POSITION = 'extensionposition';
 const DECIMALS_STATUS = 'decimalsstatus';
 const LEFT_CLICK_APP = 'leftclickapp';
+const LEFT_CLICK_CUSTOM_APP_ID = 'leftclickcustomappid';
 const RIGHT_CLICK_STATUS = 'rightclickstatus';
 const SHOW_COLORS_STATUS = 'showcolorsstatus';
 const CPU_STATUS = 'cpustatus';
@@ -33,8 +34,10 @@ const TEMPERATURE_RESCAN_SECONDS = 60;
 const RESOURCE_APP_IDS = [
     'net.nokyan.Resources.desktop',
     'org.gnome.SystemMonitor.desktop',
-    'io.missioncenter.MissionCenter.desktop',
+    'io.missioncenter.MissionCenter',
 ];
+const CUSTOM_APP_INDEX = 3;
+const DISABLED_APP_INDEX = 4;
 
 function clamp(value, minimum, maximum) {
     return Math.min(Math.max(value, minimum), maximum);
@@ -145,7 +148,8 @@ class ResourceMonitor extends PanelMenu.Button {
     _loadSettings() {
         this._refreshTime = clamp(this._settings.get_int(REFRESH_TIME), 1, 60);
         this._decimalsStatus = this._settings.get_boolean(DECIMALS_STATUS);
-        this._leftClickApp = clamp(this._settings.get_int(LEFT_CLICK_APP), 0, 2);
+        this._leftClickApp = clamp(this._settings.get_int(LEFT_CLICK_APP), 0, 4);
+        this._leftClickCustomAppId = this._settings.get_string(LEFT_CLICK_CUSTOM_APP_ID);
         this._rightClickStatus = this._settings.get_boolean(RIGHT_CLICK_STATUS);
         this._showColorsStatus = this._settings.get_boolean(SHOW_COLORS_STATUS);
         this._cpuStatus = this._settings.get_boolean(CPU_STATUS);
@@ -189,6 +193,7 @@ class ResourceMonitor extends PanelMenu.Button {
             REFRESH_TIME,
             DECIMALS_STATUS,
             LEFT_CLICK_APP,
+            LEFT_CLICK_CUSTOM_APP_ID,
             RIGHT_CLICK_STATUS,
             SHOW_COLORS_STATUS,
             CPU_STATUS,
@@ -320,8 +325,22 @@ class ResourceMonitor extends PanelMenu.Button {
     }
 
     _launchSelectedApp() {
-        const appId = RESOURCE_APP_IDS[this._leftClickApp];
-        const appInfo = Gio.AppInfo.get_all().find(info => info.get_id() === appId);
+        if (this._leftClickApp === DISABLED_APP_INDEX)
+            return;
+
+        const appId = this._leftClickApp === CUSTOM_APP_INDEX
+            ? this._leftClickCustomAppId.trim()
+            : RESOURCE_APP_IDS[this._leftClickApp];
+        if (!appId) {
+            console.warn('ResourceBuzz Lite: custom left-click app ID is empty');
+            return;
+        }
+
+        const commonId = appId.replace(/\.desktop$/, '');
+        const appInfo = Gio.AppInfo.get_all().find(info =>
+            info.get_id() === appId ||
+            info.get_id()?.replace(/\.desktop$/, '') === commonId ||
+            info.get_string?.('X-SnapCommonID') === commonId);
         if (!appInfo) {
             console.warn(`ResourceBuzz Lite: selected app is not installed: ${appId}`);
             return;
@@ -330,7 +349,7 @@ class ResourceMonitor extends PanelMenu.Button {
         try {
             appInfo.launch([], null);
         } catch (error) {
-            console.error(`ResourceBuzz Lite: failed to launch ${appId}: ${error.message}`);
+            console.error(`ResourceBuzz Lite: failed to launch ${appInfo.get_id()}: ${error.message}`);
         }
     }
 

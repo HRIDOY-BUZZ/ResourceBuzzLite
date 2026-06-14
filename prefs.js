@@ -16,6 +16,7 @@ const BINDINGS = [
     ['thermaltemperatureunit', 'thermal_unit_combo', 'selected', Gio.SettingsBindFlags.DEFAULT],
     ['thermalcputemperaturestatus', 'thermal_unit_combo', 'sensitive', Gio.SettingsBindFlags.GET],
     ['leftclickapp', 'left_click_app_combo', 'selected', Gio.SettingsBindFlags.DEFAULT],
+    ['leftclickcustomappid', 'left_click_custom_app_id', 'text', Gio.SettingsBindFlags.DEFAULT],
     ['rightclickstatus', 'right_click_switch', 'active', Gio.SettingsBindFlags.DEFAULT],
 ];
 
@@ -29,5 +30,13 @@ export default class ResourceMonitorPreferences extends ExtensionPreferences {
 
         for (const [key, objectId, property, flags] of BINDINGS)
             settings.bind(key, builder.get_object(objectId), property, flags);
+
+        const appCombo = builder.get_object('left_click_app_combo');
+        const customAppId = builder.get_object('left_click_custom_app_id');
+        const updateCustomAppVisibility = () => {
+            customAppId.visible = appCombo.selected === 3;
+        };
+        appCombo.connect('notify::selected', updateCustomAppVisibility);
+        updateCustomAppVisibility();
     }
 }

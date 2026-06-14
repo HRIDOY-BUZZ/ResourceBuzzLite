@@ -99,9 +99,17 @@
                   <item>Resources</item>
                   <item>GNOME System Monitor</item>
                   <item>Mission Center</item>
+                  <item>Custom app ID</item>
+                  <item>Disabled</item>
                 </items>
               </object>
             </property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwEntryRow" id="left_click_custom_app_id">
+            <property name="title">Custom App ID</property>
+            <property name="visible">false</property>
           </object>
         </child>
         <child>

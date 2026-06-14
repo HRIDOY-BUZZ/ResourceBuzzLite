@@ -20,10 +20,15 @@
             <description>Show decimal places for values.</description>
         </key>
         <key name="leftclickapp" type="i">
-            <range min="0" max="2"/>
+            <range min="0" max="4"/>
             <default>0</default>
             <summary>Left Click App</summary>
-            <description>0: Resources, 1: GNOME System Monitor, 2: Mission Center</description>
+            <description>0: Resources, 1: GNOME System Monitor, 2: Mission Center, 3: custom app ID, 4: disabled</description>
+        </key>
+        <key name="leftclickcustomappid" type="s">
+            <default>""</default>
+            <summary>Custom Left Click App ID</summary>
+            <description>Desktop application ID to launch when the custom left-click option is selected.</description>
         </key>
         <key name="leftclickstatus" type="s">
             <default>"resources"</default>
