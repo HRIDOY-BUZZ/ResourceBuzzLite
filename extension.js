@@ -61,6 +61,8 @@ class ResourceMonitor extends PanelMenu.Button {
         this._thermalSensors = [];
         this._lastThermalScan = 0;
         this._lastThermalError = null;
+        this._lastCpuError = null;
+        this._lastRamError = null;
 
         this._createGui();
         this._createClickGestures();
@@ -246,21 +248,65 @@ class ResourceMonitor extends PanelMenu.Button {
         });
     }
 
-    _enumerateNames(path) {
+    async _enumerateNames(path) {
         const names = [];
         const directory = Gio.File.new_for_path(path);
-        const enumerator = directory.enumerate_children(
-            'standard::name',
-            Gio.FileQueryInfoFlags.NONE,
-            this._cancellable
-        );
+        const enumerator = await new Promise((resolve, reject) => {
+            directory.enumerate_children_async(
+                'standard::name',
+                Gio.FileQueryInfoFlags.NONE,
+                GLib.PRIORITY_DEFAULT,
+                this._cancellable,
+                (source, result) => {
+                    try {
+                        resolve(source.enumerate_children_finish(result));
+                    } catch (error) {
+                        reject(error);
+                    }
+                }
+            );
+        });
 
         try {
-            let info;
-            while ((info = enumerator.next_file(this._cancellable)) !== null)
-                names.push(info.get_name());
+            while (true) {
+                const infos = await new Promise((resolve, reject) => {
+                    enumerator.next_files_async(
+                        32,
+                        GLib.PRIORITY_DEFAULT,
+                        this._cancellable,
+                        (source, result) => {
+                            try {
+                                resolve(source.next_files_finish(result));
+                            } catch (error) {
+                                reject(error);
+                            }
+                        }
+                    );
+                });
+                if (infos.length === 0)
+                    break;
+
+                names.push(...infos.map(info => info.get_name()));
+            }
         } finally {
-            enumerator.close(this._cancellable);
+            try {
+                await new Promise((resolve, reject) => {
+                    enumerator.close_async(
+                        GLib.PRIORITY_DEFAULT,
+                        null,
+                        (source, result) => {
+                            try {
+                                resolve(source.close_finish(result));
+                            } catch (error) {
+                                reject(error);
+                            }
+                        }
+                    );
+                });
+            } catch (error) {
+                if (!this._isCancelledError(error))
+                    throw error;
+            }
         }
 
         return names;
@@ -270,33 +316,38 @@ class ResourceMonitor extends PanelMenu.Button {
         const sensors = [];
 
         try {
-            for (const hwmonName of this._enumerateNames(HWMON_PATH)) {
+            for (const hwmonName of await this._enumerateNames(HWMON_PATH)) {
                 const hwmonPath = `${HWMON_PATH}/${hwmonName}`;
-                const driver = (await this._loadFile(`${hwmonPath}/name`)).trim();
-                if (!CPU_HWMON_DRIVERS.has(driver))
-                    continue;
-
-                for (const fileName of this._enumerateNames(hwmonPath)) {
-                    if (!/^temp\d+_input$/.test(fileName))
+                try {
+                    const driver = (await this._loadFile(`${hwmonPath}/name`)).trim();
+                    if (!CPU_HWMON_DRIVERS.has(driver))
                         continue;
 
-                    const inputPath = `${hwmonPath}/${fileName}`;
-                    const labelPath = inputPath.replace(/_input$/, '_label');
-                    let label = `${driver} ${fileName.replace('_input', '')}`;
+                    for (const fileName of await this._enumerateNames(hwmonPath)) {
+                        if (!/^temp\d+_input$/.test(fileName))
+                            continue;
 
-                    try {
-                        label = (await this._loadFile(labelPath)).trim() || label;
-                    } catch (error) {
-                        if (!this._isNotFoundError(error))
-                            throw error;
+                        const inputPath = `${hwmonPath}/${fileName}`;
+                        const labelPath = inputPath.replace(/_input$/, '_label');
+                        let label = `${driver} ${fileName.replace('_input', '')}`;
+
+                        try {
+                            label = (await this._loadFile(labelPath)).trim() || label;
+                        } catch (error) {
+                            if (this._isCancelledError(error))
+                                throw error;
+                        }
+
+                        sensors.push({
+                            device: hwmonPath,
+                            driver,
+                            label,
+                            path: inputPath,
+                        });
                     }
-
-                    sensors.push({
-                        device: hwmonPath,
-                        driver,
-                        label,
-                        path: inputPath,
-                    });
+                } catch (error) {
+                    if (this._isCancelledError(error))
+                        throw error;
                 }
             }
         } catch (error) {
@@ -306,10 +357,6 @@ class ResourceMonitor extends PanelMenu.Button {
 
         this._thermalSensors = sensors;
         this._lastThermalScan = GLib.get_monotonic_time() / GLib.USEC_PER_SEC;
-    }
-
-    _isNotFoundError(error) {
-        return error.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND) ?? false;
     }
 
     _isCancelledError(error) {
@@ -322,6 +369,15 @@ class ResourceMonitor extends PanelMenu.Button {
 
         this._lastThermalError = message;
         console.warn(`ResourceBuzz Lite: ${message}`);
+    }
+
+    _logResourceError(resource, message) {
+        const property = resource === 'CPU' ? '_lastCpuError' : '_lastRamError';
+        if (this[property] !== null)
+            return;
+
+        this[property] = message;
+        console.error(`ResourceBuzz Lite: ${resource} error: ${message}`);
     }
 
     _launchSelectedApp() {
@@ -402,10 +458,11 @@ class ResourceMonitor extends PanelMenu.Button {
 
             this._cpuTotalOld = total;
             this._cpuIdleOld = idle;
+            this._lastCpuError = null;
         } catch (error) {
             if (!this._isCancelledError(error)) {
                 this._cpuLabel.text = 'N/A';
-                console.error(`ResourceBuzz Lite: CPU error: ${error.message}`);
+                this._logResourceError('CPU', error.message);
             }
         }
     }
@@ -426,17 +483,18 @@ class ResourceMonitor extends PanelMenu.Button {
 
             const usage = 100 * (total - available) / total;
             this._setUsage(this._ramLabel, this._ramIcon, usage);
+            this._lastRamError = null;
         } catch (error) {
             if (!this._isCancelledError(error)) {
                 this._ramLabel.text = 'N/A';
-                console.error(`ResourceBuzz Lite: RAM error: ${error.message}`);
+                this._logResourceError('RAM', error.message);
             }
         }
     }
 
     async _refreshThermal() {
         const now = GLib.get_monotonic_time() / GLib.USEC_PER_SEC;
-        if (this._thermalSensors.length === 0 ||
+        if (this._lastThermalScan === 0 ||
             now - this._lastThermalScan >= TEMPERATURE_RESCAN_SECONDS)
             await this._detectThermalSensors();
 
