@@ -1,0 +1,21 @@
+# Generated extension packages
+*.shell-extension.zip
+
+# Generated GSettings schema databases
+schemas/gschemas.compiled
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Editor and IDE settings
+.idea/
+.vscode/
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
