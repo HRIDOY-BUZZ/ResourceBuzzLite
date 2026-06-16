@@ -30,6 +30,7 @@ const CPU_HWMON_DRIVERS = new Set([
 ]);
 const HWMON_PATH = '/sys/class/hwmon';
 const POSITION_NAMES = ['left', 'center', 'right'];
+const POSITION_INDICES = [-1, -1, 0];
 const TEMPERATURE_RESCAN_SECONDS = 60;
 const RESOURCE_APP_IDS = [
     'net.nokyan.Resources.desktop',
@@ -648,7 +649,7 @@ export default class ResourceMonitorExtension extends Extension {
         Main.panel.addToStatusArea(
             this.uuid,
             this._indicator,
-            0,
+            POSITION_INDICES[positionIndex],
             POSITION_NAMES[positionIndex]
         );
     }
