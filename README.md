@@ -69,7 +69,7 @@ Once published, install ResourceBuzz Lite from its page on
 Install a downloaded release package:
 
 ```bash
-gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.zip
+gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.shell-extension.zip
 ```
 
 Log out and back in to ensure GNOME Shell loads the newly installed extension,
@@ -88,22 +88,25 @@ Requirements:
 
 - GNOME Shell 45 or newer
 - `gnome-extensions`
-- `glib-compile-schemas`
-- `make`
-- Node.js, used only by the source validation command
+- `glib-compile-schemas` (usually part of glib2 development packages)
 
 Clone and build the extension package:
 
 ```bash
 git clone https://github.com/HRIDOY-BUZZ/ResourceBuzzLite.git
 cd ResourceBuzzLite
-make pack
+gnome-extensions pack --force \
+  --schema=schemas/org.gnome.shell.extensions.resourcebuzz-lite.gschema.xml \
+  --extra-source=prefs.ui \
+  --extra-source=icons \
+  --extra-source=LICENSE \
+  .
 ```
 
-Install the generated ZIP:
+Install the generated package:
 
 ```bash
-gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.zip
+gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.shell-extension.zip
 ```
 
 Log out and back in, then enable ResourceBuzz Lite using the Extensions
@@ -163,23 +166,35 @@ under `schemas/`.
 
 Run the validation checks:
 
-```bash
-make check
-```
-
-This validates the GSettings schema, checks JavaScript syntax, and checks the
-Git diff for whitespace errors.
+- Validate GSettings schema:
+  ```bash
+  glib-compile-schemas --strict --dry-run schemas
+  ```
+- Check JavaScript syntax:
+  ```bash
+  node --check extension.js
+  node --check prefs.js
+  ```
+- Check git diff for trailing whitespaces:
+  ```bash
+  git diff --check
+  ```
 
 Build the submission package:
 
 ```bash
-make pack
+gnome-extensions pack --force \
+  --schema=schemas/org.gnome.shell.extensions.resourcebuzz-lite.gschema.xml \
+  --extra-source=prefs.ui \
+  --extra-source=icons \
+  --extra-source=LICENSE \
+  .
 ```
 
-Verify the generated archive:
+Verify the generated package:
 
 ```bash
-unzip -t ResourceBuzzLite@hridoybuzz.dev.zip
+unzip -t ResourceBuzzLite@hridoybuzz.dev.shell-extension.zip
 ```
 
 ### Monitor Runtime Logs
@@ -232,9 +247,9 @@ desktop ID rather than a shell command or executable path.
 
 Bug reports and focused pull requests are welcome. Before submitting changes:
 
-1. Run `make check`.
-2. Run `make pack`.
-3. Verify the generated ZIP with `unzip -t`.
+1. Validate GSettings schema (`glib-compile-schemas --strict --dry-run schemas`) and JavaScript syntax (`node --check extension.js && node --check prefs.js`).
+2. Build the extension package using `gnome-extensions pack`.
+3. Verify the generated package with `unzip -t`.
 4. Test enable, disable, preferences, panel updates, and mouse actions in a
    live GNOME Shell session.
 
@@ -245,5 +260,3 @@ Report issues through the
 
 ResourceBuzz Lite is distributed under the
 [GNU General Public License v2.0 or later](LICENSE).
-
-The complete GPL-2.0 license text is available in [COPYING](COPYING).
