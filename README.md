@@ -12,6 +12,9 @@
   <a href="LICENSE">
     <img alt="GPL-2.0-or-later" src="https://img.shields.io/badge/License-GPL--2.0--or--later-blue">
   </a>
+  <a href="https://github.com/sponsors/HRIDOY-BUZZ">
+    <img alt="Sponsor" src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=github-sponsors">
+  </a>
 </p>
 
 ## Preview
@@ -256,7 +259,18 @@ Bug reports and focused pull requests are welcome. Before submitting changes:
 Report issues through the
 [GitHub issue tracker](https://github.com/HRIDOY-BUZZ/ResourceBuzzLite/issues).
 
+## Support
+
+If you find ResourceBuzz Lite useful and want to support its development, you can sponsor me on GitHub:
+
+<p align="center">
+  <a href="https://github.com/sponsors/HRIDOY-BUZZ">
+    <img src="https://img.shields.io/badge/Sponsor-HRIDOY--BUZZ-ea4aaa?style=for-the-badge&logo=github-sponsors" alt="Sponsor on GitHub" />
+  </a>
+</p>
+
 ## License
 
 ResourceBuzz Lite is distributed under the
 [GNU General Public License v2.0 or later](LICENSE).
+
