@@ -52,11 +52,9 @@ class ResourceMonitor extends PanelMenu.Button {
         this._settings = settings;
         this._openPreferences = openPreferences;
         this._path = path;
-        this._handlerIds = [];
         this._cancellable = new Gio.Cancellable();
         this._mainTimer = null;
         this._refreshInProgress = false;
-        this._destroyed = false;
         this._cpuTotalOld = null;
         this._cpuIdleOld = null;
         this._thermalSensors = [];
@@ -111,8 +109,8 @@ class ResourceMonitor extends PanelMenu.Button {
 
     _createClickGestures() {
         if (!Clutter.ClickGesture) {
-            this.connect('button-press-event', (_actor, event) =>
-                this._onButtonPress(event));
+            this.connectObject('button-press-event', (_actor, event) =>
+                this._onButtonPress(event), this);
             return;
         }
 
@@ -120,17 +118,17 @@ class ResourceMonitor extends PanelMenu.Button {
             required_button: Clutter.BUTTON_PRIMARY,
             recognize_on_press: true,
         });
-        leftClickGesture.connect('recognize', () => this._launchSelectedApp());
+        leftClickGesture.connectObject('recognize', () => this._launchSelectedApp(), this);
         this.add_action(leftClickGesture);
 
         const rightClickGesture = new Clutter.ClickGesture({
             required_button: Clutter.BUTTON_SECONDARY,
             recognize_on_press: true,
         });
-        rightClickGesture.connect('recognize', () => {
+        rightClickGesture.connectObject('recognize', () => {
             if (this._rightClickStatus)
                 this._openPreferences();
-        });
+        }, this);
         this.add_action(rightClickGesture);
     }
 
@@ -206,13 +204,12 @@ class ResourceMonitor extends PanelMenu.Button {
         ];
 
         for (const key of keys) {
-            const id = this._settings.connect(`changed::${key}`, () => {
+            this._settings.connectObject(`changed::${key}`, () => {
                 this._loadSettings();
                 if (key === REFRESH_TIME)
                     this._restartTimer();
                 this._refresh();
-            });
-            this._handlerIds.push(id);
+            }, this);
         }
     }
 
@@ -418,7 +415,7 @@ class ResourceMonitor extends PanelMenu.Button {
     }
 
     async _refresh() {
-        if (this._refreshInProgress || this._destroyed)
+        if (this._refreshInProgress || this._cancellable.is_cancelled())
             return;
 
         this._refreshInProgress = true;
@@ -611,7 +608,6 @@ class ResourceMonitor extends PanelMenu.Button {
     }
 
     destroy() {
-        this._destroyed = true;
         this._cancellable.cancel();
 
         if (this._mainTimer) {
@@ -619,9 +615,7 @@ class ResourceMonitor extends PanelMenu.Button {
             this._mainTimer = null;
         }
 
-        for (const id of this._handlerIds)
-            this._settings.disconnect(id);
-        this._handlerIds = [];
+        this._settings.disconnectObject(this);
 
         super.destroy();
     }
@@ -631,9 +625,10 @@ export default class ResourceMonitorExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._indicator = null;
-        this._positionId = this._settings.connect(
+        this._settings.connectObject(
             `changed::${EXTENSION_POSITION}`,
-            () => this._updatePosition()
+            () => this._updatePosition(),
+            this
         );
         this._updatePosition();
     }
@@ -662,10 +657,7 @@ export default class ResourceMonitorExtension extends Extension {
     }
 
     disable() {
-        if (this._positionId) {
-            this._settings.disconnect(this._positionId);
-            this._positionId = null;
-        }
+        this._settings.disconnectObject(this);
 
         this._indicator?.destroy();
         this._indicator = null;
