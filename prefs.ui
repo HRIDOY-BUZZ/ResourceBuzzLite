@@ -144,6 +144,20 @@
             <property name="subtitle">github.com/HRIDOY-BUZZ/ResourceBuzzLite</property>
           </object>
         </child>
+        <child>
+          <object class="AdwActionRow">
+            <property name="title">Donate</property>
+            <property name="subtitle">Support development via GitHub Sponsors</property>
+            <property name="activatable-widget">donate_button</property>
+            <child type="suffix">
+              <object class="GtkLinkButton" id="donate_button">
+                <property name="uri">https://github.com/sponsors/HRIDOY-BUZZ</property>
+                <property name="label">Donate</property>
+                <property name="valign">center</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </object>
