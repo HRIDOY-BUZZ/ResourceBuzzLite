@@ -72,7 +72,7 @@ Once published, install ResourceBuzz Lite from its page on
 Install a downloaded release package:
 
 ```bash
-gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.shell-extension.zip
+gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.zip
 ```
 
 Log out and back in to ensure GNOME Shell loads the newly installed extension,
@@ -109,7 +109,7 @@ gnome-extensions pack --force \
 Install the generated package:
 
 ```bash
-gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.shell-extension.zip
+gnome-extensions install --force ResourceBuzzLite@hridoybuzz.dev.zip
 ```
 
 Log out and back in, then enable ResourceBuzz Lite using the Extensions
@@ -197,7 +197,7 @@ gnome-extensions pack --force \
 Verify the generated package:
 
 ```bash
-unzip -t ResourceBuzzLite@hridoybuzz.dev.shell-extension.zip
+unzip -t ResourceBuzzLite@hridoybuzz.dev.zip
 ```
 
 ### Monitor Runtime Logs
