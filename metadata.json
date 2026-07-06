@@ -11,5 +11,8 @@
     "50"
   ],
   "url": "https://github.com/HRIDOY-BUZZ/ResourceBuzzLite",
-  "uuid": "ResourceBuzzLite@hridoybuzz.dev"
+  "uuid": "ResourceBuzzLite@hridoybuzz.dev",
+  "donations": {
+    "github": "HRIDOY-BUZZ"
+  }
 }
