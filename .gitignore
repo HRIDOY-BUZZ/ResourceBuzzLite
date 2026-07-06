@@ -1,5 +1,5 @@
 # Generated extension packages
-*.shell-extension.zip
+*.zip
 
 # Generated GSettings schema databases
 schemas/gschemas.compiled
