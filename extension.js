@@ -364,12 +364,19 @@ class ResourceMonitor extends PanelMenu.Button {
         return error.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED) ?? false;
     }
 
+    _log(level, message) {
+        if (level === 'warn')
+            console.warn(message);
+        else if (level === 'error')
+            console.error(message);
+    }
+
     _logThermalError(message) {
         if (message === this._lastThermalError)
             return;
 
         this._lastThermalError = message;
-        console.warn(`ResourceBuzz Lite: ${message}`);
+        this._log('warn', `ResourceBuzz Lite: ${message}`);
     }
 
     _logResourceError(resource, message) {
@@ -378,7 +385,7 @@ class ResourceMonitor extends PanelMenu.Button {
             return;
 
         this[property] = message;
-        console.error(`ResourceBuzz Lite: ${resource} error: ${message}`);
+        this._log('error', `ResourceBuzz Lite: ${resource} error: ${message}`);
     }
 
     _launchSelectedApp() {
@@ -389,7 +396,7 @@ class ResourceMonitor extends PanelMenu.Button {
             ? this._leftClickCustomAppId.trim()
             : RESOURCE_APP_IDS[this._leftClickApp];
         if (!appId) {
-            console.warn('ResourceBuzz Lite: custom left-click app ID is empty');
+            this._log('warn', 'ResourceBuzz Lite: custom left-click app ID is empty');
             return;
         }
 
@@ -399,14 +406,14 @@ class ResourceMonitor extends PanelMenu.Button {
             info.get_id()?.replace(/\.desktop$/, '') === commonId ||
             info.get_string?.('X-SnapCommonID') === commonId);
         if (!appInfo) {
-            console.warn(`ResourceBuzz Lite: selected app is not installed: ${appId}`);
+            this._log('warn', `ResourceBuzz Lite: selected app is not installed: ${appId}`);
             return;
         }
 
         try {
             appInfo.launch([], null);
         } catch (error) {
-            console.error(`ResourceBuzz Lite: failed to launch ${appInfo.get_id()}: ${error.message}`);
+            this._log('error', `ResourceBuzz Lite: failed to launch ${appInfo.get_id()}: ${error.message}`);
         }
     }
 
@@ -426,7 +433,7 @@ class ResourceMonitor extends PanelMenu.Button {
             await Promise.all(updates);
         } catch (error) {
             if (!this._isCancelledError(error))
-                console.error(`ResourceBuzz Lite: refresh error: ${error.message}`);
+                this._log('error', `ResourceBuzz Lite: refresh error: ${error.message}`);
         } finally {
             this._refreshInProgress = false;
         }
