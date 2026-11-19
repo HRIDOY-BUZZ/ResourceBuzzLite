@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/HRIDOY-BUZZ/ResourceBuzzLite">
-    <img alt="GNOME Shell 45-50" src="https://img.shields.io/badge/GNOME%20Shell-45--50-4A86CF">
+    <img alt="GNOME Shell 45-51" src="https://img.shields.io/badge/GNOME%20Shell-45--51-4A86CF">
   </a>
   <a href="LICENSE">
     <img alt="GPL-2.0-or-later" src="https://img.shields.io/badge/License-GPL--2.0--or--later-blue">
@@ -51,6 +51,7 @@ ResourceBuzz Lite currently declares support for:
 - GNOME Shell 48
 - GNOME Shell 49
 - GNOME Shell 50
+- GNOME Shell 51
 
 CPU and RAM monitoring use Linux `/proc` interfaces. CPU temperature monitoring
 uses Linux `hwmon` sensors and currently recognizes common CPU drivers including
